@@ -35,14 +35,15 @@ public class ControllerFactorizeNumber extends Thread {
     private void factorize(BigInteger n) {
         // 1
         int smoothnessBound = getSmoothnessBound(n);
-        System.out.println(smoothnessBound);
         // 2 y 3
-        BigInteger[] factorBase = sieveOfEratosthenesWithEulerCriterion(BigInteger.valueOf(50), n);
-        System.out.println(Arrays.toString(factorBase));
+        BigInteger[] factorBase = sieveOfEratosthenesWithEulerCriterion(BigInteger.valueOf(50), n); // TODO: cambiar 50 por smoothnessBound
         // 4
         BigInteger[] congruenceSequence = computeCongruenceSequence(n, factorBase);
-        System.out.println(Arrays.toString(congruenceSequence));
-        // 5
+        // 5 and 6
+        int[][] factorMatrix = constructMatrix(congruenceSequence, factorBase);
+        for (int[] is : factorMatrix) {
+            System.out.println(Arrays.toString(is));
+        }
 
     }
 
@@ -126,7 +127,7 @@ public class ControllerFactorizeNumber extends Thread {
     private static BigInteger[] computeCongruenceSequence(BigInteger n, BigInteger[] factorBase) {
         int sqrt = (int) Math.ceil(Math.sqrt(n.doubleValue()));
 
-        BigInteger[] sequence = new BigInteger[factorBase.length * 6];
+        BigInteger[] sequence = new BigInteger[factorBase.length + 8]; // TODO: cambiar "+ 8" por "* 6"
 
         for (int i = 0; i < sequence.length; i++) {
             BigInteger qn = BigInteger.valueOf(sqrt + i).pow(2).subtract(n);
@@ -134,6 +135,38 @@ public class ControllerFactorizeNumber extends Thread {
         }
 
         return sequence;
+    }
+
+    private static int[] factorizeSmoothNumber(BigInteger number, BigInteger[] primes) {
+        int[] exponents = new int[primes.length];
+        int idx = 0;
+        for (BigInteger prime : primes) {
+            int exponent = 0;
+            while (number.mod(prime).equals(ZERO)) {
+                number = number.divide(prime);
+                exponent++;
+            }
+            exponents[idx++] = exponent % 2;
+        }
+        if (number.equals(ONE)) {
+            return exponents;
+        } else {
+            return null;
+        }
+    }
+
+    private static int[][] constructMatrix(BigInteger[] smoothNumbers, BigInteger[] primes) {
+        int[][] result = new int[smoothNumbers.length][primes.length];
+        int idx = 0;
+
+        for (BigInteger number : smoothNumbers) {
+            int[] exponents = factorizeSmoothNumber(number, primes);
+            if (exponents != null) {
+                result[idx++] = exponents;
+            }
+        }
+
+        return idx == smoothNumbers.length ? result : Arrays.copyOf(result, idx);
     }
 
     @Override
