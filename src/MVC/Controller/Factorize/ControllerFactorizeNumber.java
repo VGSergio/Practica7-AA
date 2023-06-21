@@ -1,5 +1,8 @@
 package MVC.Controller.Factorize;
 
+import static MVC.Controller.Factorize.Qn.*;
+import static MVC.Controller.Factorize.SieveOfEratosthenes.*;
+import static MVC.Controller.Factorize.BSmoothValues.*;
 import MVC.Controller.PrimeNumber.ControllerPrimeNumber;
 import Practica7.Practica7;
 import java.math.BigInteger;
@@ -14,10 +17,6 @@ import java.util.List;
 public class ControllerFactorizeNumber extends Thread {
 
     private final Practica7 practica7;
-
-    private static final BigInteger ZERO = BigInteger.ZERO;
-    private static final BigInteger ONE = BigInteger.ONE;
-    private static final BigInteger TWO = BigInteger.TWO;
 
     public ControllerFactorizeNumber(Practica7 practica7) {
         this.practica7 = practica7;
@@ -35,168 +34,170 @@ public class ControllerFactorizeNumber extends Thread {
     private void factorize(BigInteger n) {
 
         // 1
-        int smoothnessBound = getSmoothnessBound(n);
-        System.out.println("Smoothness Bound " + smoothnessBound);
+        int smoothnessBound = SmoothnessBoundB.getSmoothnessBound(n);
 
         // 2 y 3
         BigInteger[] factorBase = sieveOfEratosthenesWithEulerCriterion(BigInteger.valueOf(50), n); // TODO: cambiar 50 por smoothnessBound
-        System.out.println("Factor base " + Arrays.toString(factorBase));
+        int[] primes = sieveOfEratosthenes(BigInteger.valueOf(50), n);
+        BigInteger[] primesEuler = eulerCriterion(n, primes);
+        BigInteger[] bigIntegerArray = new BigInteger[primes.length];
+        for (int i = 0; i < primes.length; i++) {
+            bigIntegerArray[i] = BigInteger.valueOf(primes[i]);
+        }
 
         // 4
         BigInteger[] Qn = computeQn(n, factorBase);
-        System.out.println("Qn's " + Arrays.toString(Qn));
 
         // 5 y 6
-        SmoothRelationObject smoothRelations = smoothRelations(Qn, factorBase);
+        SmoothRelationObject smoothRelations = smoothRelations(Qn, bigIntegerArray);
         BigInteger[] smoothRelationsQN = smoothRelations.getQn();
         int[][] smoothRelationsFactorsMatrix = smoothRelations.getFactors();
-        System.out.println("Smooth values" + Arrays.toString(smoothRelationsQN));
-        for (int[] is : smoothRelationsFactorsMatrix) {
-            System.out.println(Arrays.toString(is));
+    }
+
+    public static BigInteger[][] solve(int[][] matrix) {
+        int numRows = matrix.length;
+        int numCols = matrix[0].length;
+
+        // Convert the int matrix to BigInteger matrix
+        BigInteger[][] bigIntegerMatrix = new BigInteger[numRows][numCols];
+        for (int i = 0; i < numRows; i++) {
+            for (int j = 0; j < numCols; j++) {
+                bigIntegerMatrix[i][j] = BigInteger.valueOf(matrix[i][j]);
+            }
         }
-    }
 
-    /**
-     * Computes the smoothness bound for finding a desired number of smooth
-     * numbers.
-     *
-     * @param compositeNumber The composite number for which the smoothness
-     * bound is computed.
-     * @return The smoothness bound as an integer.
-     */
-    private static int getSmoothnessBound(BigInteger compositeNumber) {
-        double logN = Math.log(compositeNumber.doubleValue());
-        double logLogN = Math.log(logN);
-        return (int) Math.exp(0.5 * Math.sqrt(logN * logLogN));
-    }
-
-    /**
-     * Finds all prime numbers less than or equal to a given number
-     * smoothnessBound that passes the Euler criterion when evaluated with the
-     * number n.
-     *
-     * Optimized and adapted for smoothnessBound and Euler's Criterion, based on
-     * https://www.geeksforgeeks.org/sieve-of-eratosthenes/
-     *
-     * @param smoothnessBound The upper limit for prime number search.
-     * @param n The number to be evaluated with the Euler criterion.
-     * @return An array of prime numbers less than or equal to N that satisfy
-     * the Euler criterion with n.
-     */
-    private static BigInteger[] sieveOfEratosthenesWithEulerCriterion(BigInteger smoothnessBound, BigInteger n) {
-        int maxLimit = smoothnessBound.intValue();
-        boolean[] isComposite = new boolean[maxLimit + 1];
-
-        List<BigInteger> primes = new ArrayList<>();
-
-        for (int p = 2; p <= maxLimit; p++) {
-            if (!isComposite[p]) {
-                if (eulerCriterion(n, p) == 1) {
-                    primes.add(BigInteger.valueOf(p));
+        for (int col = 0; col < numCols; col++) {
+            int maxRow = col;
+            for (int row = col + 1; row < numRows; row++) {
+                if (bigIntegerMatrix[row][col].abs().compareTo(bigIntegerMatrix[maxRow][col].abs()) > 0) {
+                    maxRow = row;
                 }
-                for (int i = p * p; i <= maxLimit; i += p) {
-                    isComposite[i] = true;
+            }
+
+            BigInteger[] temp = bigIntegerMatrix[col];
+            bigIntegerMatrix[col] = bigIntegerMatrix[maxRow];
+            bigIntegerMatrix[maxRow] = temp;
+
+            for (int row = col + 1; row < numRows; row++) {
+                BigInteger ratio = bigIntegerMatrix[row][col].divide(bigIntegerMatrix[col][col]);
+                for (int i = col; i < numCols; i++) {
+                    bigIntegerMatrix[row][i] = bigIntegerMatrix[row][i].subtract(ratio.multiply(bigIntegerMatrix[col][i]));
                 }
             }
         }
 
-        return primes.toArray(new BigInteger[0]);
-    }
-
-    /**
-     * Applies the Euler criterion to determine the quadratic residue status of
-     * a number 'n' modulo 'p'.
-     *
-     * Adaptation of
-     * https://www.geeksforgeeks.org/eulers-criterion-check-if-square-root-under-modulo-p-exists/
-     * using BigInteger
-     *
-     * @param n The number for which the quadratic residue status is determined.
-     * @param p The modulus within which the quadratic residue status is
-     * evaluated.
-     * @return 1 if 'n' is a quadratic residue modulo 'p', -1 if it is a
-     * quadratic non-residue, or 0 if 'n' is not coprime to 'p'.
-     */
-    private static int eulerCriterion(BigInteger n, int p) {
-        int power = (p - 1) >> 1;  // Integer division by 2
-        BigInteger result = n.modPow(BigInteger.valueOf(power), BigInteger.valueOf(p));
-
-        if (result.equals(ONE)) {
-            return 1;  // a is a quadratic residue modulo p
-        } else if (result.equals(BigInteger.valueOf(p - 1))) {
-            return -1; // a is a quadratic non-residue modulo p
-        } else {
-            return 0;  // a is not coprime to p
-        }
-    }
-
-    /**
-     * Computes the congruence sequence of the form X^2 = Y^2 (mod N) (or what
-     * is the same thing) x^2 (mod N) = Y^2 for a given modulus N and factor
-     * base.
-     *
-     * @param n the modulus N
-     * @param factorBase the factor base array
-     * @return an array of BigInteger representing the congruence sequence
-     */
-    private static BigInteger[] computeQn(BigInteger n, BigInteger[] factorBase) {
-        int sqrt = (int) Math.ceil(Math.sqrt(n.doubleValue()));
-
-        BigInteger[] Q = new BigInteger[factorBase.length + 8]; // TODO: cambiar "+ 8" por * 6
-
-        for (int i = 0; i < Q.length; i++) {
-            BigInteger Qn = BigInteger.valueOf(sqrt + i).pow(2).subtract(n);
-            Q[i] = Qn;
+        BigInteger[][] solution = new BigInteger[numCols - 1][1];
+        for (int row = numRows - 1; row >= 0; row--) {
+            BigInteger sum = BigInteger.ZERO;
+            for (int col = row + 1; col < numCols - 1; col++) {
+                sum = sum.add(bigIntegerMatrix[row][col].multiply(solution[col][0]));
+            }
+            BigInteger coefficient = bigIntegerMatrix[row][row];
+            BigInteger constantTerm = bigIntegerMatrix[row][numCols - 1];
+            solution[row][0] = constantTerm.subtract(sum).divide(coefficient);
         }
 
-        return Q;
+        return solution;
     }
 
-    private static SmoothRelationObject smoothRelations(BigInteger[] Qn, BigInteger[] factorBase) {
-        List<BigInteger> smoothRelations = new ArrayList<>();
-        List<int[]> factorsMatrix = new ArrayList<>();
+    public static int[][] transposeMatrix(int[][] matrix) {
+        int rows = matrix.length;
+        int columns = matrix[0].length;
 
-        for (BigInteger Q : Qn) {
-            int idx = 0;
-            BigInteger qn = Q;
-            int[] factors = new int[factorBase.length];
-            for (BigInteger p : factorBase) {
-                BigInteger roots = TonelliShanks.STonelli(qn, p);
-                if (roots == null) {
-                    // Q is not B-smooth, skip to the next Qₙ
+        int[][] transposedMatrix = new int[columns][rows];
+
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < columns; j++) {
+                transposedMatrix[j][i] = matrix[i][j];
+            }
+        }
+
+        return transposedMatrix;
+    }
+
+    public static int[][] computeNullSpace(int[][] matrix) {
+        int numRows = matrix.length;
+        int numCols = matrix[0].length;
+
+        // Create a list to store the null space vectors
+        List<int[]> nullSpace = new ArrayList<>();
+
+        // Create a copy of the matrix
+        int[][] copyMatrix = new int[numRows][numCols];
+        for (int i = 0; i < numRows; i++) {
+            System.arraycopy(matrix[i], 0, copyMatrix[i], 0, numCols);
+        }
+
+        // Perform Gaussian elimination
+        int row = 0;
+        for (int col = 0; col < numCols; col++) {
+            if (row >= numRows) {
+                break;
+            }
+
+            // Find the next non-zero element in the column
+            int pivotRow = row;
+            while (pivotRow < numRows && copyMatrix[pivotRow][col] == 0) {
+                pivotRow++;
+            }
+
+            if (pivotRow == numRows) {
+                continue; // All elements below this row are already zero
+            }
+
+            // Swap rows if necessary
+            int[] tempRow = copyMatrix[row];
+            copyMatrix[row] = copyMatrix[pivotRow];
+            copyMatrix[pivotRow] = tempRow;
+
+            // Perform row operations to make all elements below the pivot zero
+            for (int i = row + 1; i < numRows; i++) {
+                int factor = copyMatrix[i][col] / copyMatrix[row][col];
+                for (int j = col; j < numCols; j++) {
+                    copyMatrix[i][j] -= factor * copyMatrix[row][j];
+                }
+            }
+
+            row++;
+        }
+
+        // Find the non-zero rows (basis vectors) in the row-echelon form
+        for (int r = 0; r < numRows; r++) {
+            boolean isZeroRow = true;
+            for (int c = 0; c < numCols; c++) {
+                if (copyMatrix[r][c] != 0) {
+                    isZeroRow = false;
                     break;
                 }
-
-                // Divide Q by p until it is no longer divisible
-                while (qn.mod(p).equals(ZERO)) {
-                    qn = qn.divide(p);
-                    factors[idx]++;
-                    // Store the factor p for Qₙ
-                }
-                idx++;
             }
-
-            // Check if Q is fully factored into primes from the factor base
-            if (qn.equals(ONE)) {
-                smoothRelations.add(Q);
-                factorsMatrix.add(factors);
-                // Q is B-smooth
-                // Continue with the next Qₙ
+            if (!isZeroRow) {
+                nullSpace.add(copyMatrix[r]);
             }
         }
 
-        BigInteger[] smoothRelationsArray = smoothRelations.toArray(BigInteger[]::new);
-        int[][] array = new int[factorsMatrix.size()][];
-        for (int i = 0; i < factorsMatrix.size(); i++) {
-            int[] innerArray = factorsMatrix.get(i);
-            array[i] = innerArray;
+        // Convert the list to a 2D array and return
+        int[][] nullSpaceArray = new int[nullSpace.size()][numCols];
+        for (int i = 0; i < nullSpace.size(); i++) {
+            nullSpaceArray[i] = nullSpace.get(i);
         }
-
-        SmoothRelationObject help = new SmoothRelationObject(smoothRelationsArray, array);
-
-        return help;
+        return nullSpaceArray;
     }
-    
+
+    public static double[][] convertIntMatrixToDoubleMatrix(int[][] intMatrix) {
+        int rows = intMatrix.length;
+        int cols = intMatrix[0].length;
+
+        double[][] doubleMatrix = new double[rows][cols];
+
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                doubleMatrix[i][j] = (double) intMatrix[i][j]; // Type casting
+            }
+        }
+
+        return doubleMatrix;
+    }
+
     @Override
     public void run() {
         practica7.getModel().getFactorizeNumberStatus().setSolving();
@@ -207,123 +208,162 @@ public class ControllerFactorizeNumber extends Thread {
     }
 
     /**
-     * Auxiliary class for saving the result of the fifth step.
+     * RREF contains advanced matrix math operations Created by Edie Zhou on
+     * 1/17/2019.
      */
-    private static class SmoothRelationObject {
+    public class RREF {
 
-        private final BigInteger[] Qn;
-        private final int[][] factors;
+        /**
+         * Puts a matrix into reduced row echelon form
+         *
+         * @param matrix input matrix
+         *
+         * @return 2D result matrix
+         */
+        public static int[][] rref(double[][] matrix) {
+            int lead = 0;
+            int i;
 
-        public BigInteger[] getQn() {
-            return Qn;
-        }
+            // number of rows and columns in matrix
+            int numRows = matrix.length;
+            int numColumns = matrix[0].length;
 
-        public int[][] getFactors() {
-            return factors;
-        }
-
-        public SmoothRelationObject(BigInteger[] Qn, int[][] factors) {
-            this.Qn = Qn;
-            this.factors = factors;
-        }
-    }
-
-    /**
-     * https://www.geeksforgeeks.org/find-square-root-modulo-p-set-2-shanks-tonelli-algorithm/
-     * Refactored and adaptated for BigIntegers
-     */
-    private static class TonelliShanks {
-
-        static int z = 0;
-        private static final BigInteger MONE = BigInteger.valueOf(-1);
-
-        // Returns k such that b^k = 1 (mod p)
-        static BigInteger order(BigInteger p, BigInteger b) {
-            if (!p.gcd(b).equals(ONE)) {
-                return MONE;
-            }
-
-            // Initializing k with first odd prime number
-            BigInteger k = BigInteger.valueOf(3);
-            while (true) {
-                if (b.modPow(k, p).equals(ONE)) {
-                    return k;
-                }
-                k = k.add(ONE);
-            }
-        }
-
-        // function to update e and return x
-        static BigInteger convertx2e(BigInteger x, int[] e) {
-            z = 0;
-            while (x.mod(TWO).equals(ZERO)) {
-                x = x.shiftRight(1);
-                z++;
-            }
-            e[0] = z;
-            return x;
-        }
-
-        // Main function for finding the modular square root
-        static BigInteger STonelli(BigInteger n, BigInteger p) {
-            // a and p should be coprime for finding the modular square root
-            if (!n.gcd(p).equals(ONE)) {
-                return MONE;
-            }
-
-            // If below expression returns (p - 1), then modular square root is not possible
-            if (n.modPow(p.subtract(ONE).shiftRight(1), p).equals(p.subtract(ONE))) {
-                return MONE;
-            }
-
-            // expressing p - 1, in terms of s * 2^e, where s is odd number
-            int[] e = new int[1];
-            BigInteger s = convertx2e(p.subtract(ONE), e);
-            int z = e[0];
-
-            // finding smallest q such that q ^ ((p - 1) / 2) (mod p) = p - 1
-            BigInteger q;
-            for (q = TWO;; q = q.add(ONE)) {
-                // q - 1 is in place of (-1 % p)
-                if (q.modPow(p.subtract(ONE).shiftRight(1), p).equals(p.subtract(ONE))) {
+            for (int k = 0; k < numRows; k++) {
+                if (numColumns <= lead) {
                     break;
                 }
+                i = k;
+                while (matrix[i][lead] == 0) {
+                    i++;
+                    if (numRows == i) {
+                        i = k;
+                        lead++;
+                        if (numColumns == lead) {
+                            break;
+                        }
+                    }
+
+                }
+                matrix = rowSwap(matrix, i, k);
+                if (matrix[k][lead] != 0) {
+                    matrix = rowScale(matrix, k, (1 / matrix[k][lead]));
+                }
+                for (i = 0; i < numRows; i++) {
+                    if (i != k) {
+                        matrix = rowAddScale(matrix, k, i, ((-1) * matrix[i][lead]));
+                    }
+                }
+                lead++;
             }
 
-            // Initializing variables x, b, and g
-            BigInteger x = n.modPow(s.add(ONE).shiftRight(1), p);
-            BigInteger b = n.modPow(s, p);
-            BigInteger g = q.modPow(s, p);
-
-            BigInteger r = BigInteger.valueOf(z);
-
-            // keep looping until b becomes 1 or m becomes 0
-            while (true) {
-                int m;
-                for (m = 0; m < r.intValue(); m++) {
-                    if (order(p, b).equals(MONE)) {
-                        return MONE;
-                    }
-                    // finding m such that b^(2^m) = 1
-                    if (order(p, b).equals(BigInteger.valueOf((int) Math.pow(2, m)))) {
-                        break;
-                    }
-                }
-                if (m == 0) {
-                    return x;
-                }
-
-                // updating value of x, g, and b according to the algorithm
-                x = x.multiply(g.modPow(BigInteger.valueOf((long) Math.pow(2, r.intValue() - m - 1)), p)).mod(p);
-                g = g.modPow(BigInteger.valueOf((long) Math.pow(2, r.intValue() - m)), p);
-                b = b.multiply(g).mod(p);
-
-                if (b.equals(ONE)) {
-                    return x;
-                }
-                r = BigInteger.valueOf(m);
-            }
+            return convertDoubleMatrixToIntMatrix(matrix);
         }
+
+        private static int[][] convertDoubleMatrixToIntMatrix(double[][] doubleMatrix) {
+            int numRows = doubleMatrix.length;
+            int numCols = doubleMatrix[0].length;
+
+            int[][] intMatrix = new int[numRows][numCols];
+
+            for (int i = 0; i < numRows; i++) {
+                for (int j = 0; j < numCols; j++) {
+                    intMatrix[i][j] = (int) Math.round(doubleMatrix[i][j]);
+                }
+            }
+
+            return intMatrix;
+        }
+
+        /**
+         * Swap positions of 2 rows
+         *
+         * @param matrix matrix before row additon
+         * @param rowIndex1 int index of row to swap
+         * @param rowIndex2 int index of row to swap
+         *
+         * @return matrix after row swap
+         */
+        private static double[][] rowSwap(double[][] matrix, int rowIndex1,
+                int rowIndex2) {
+            // number of columns in matrix
+            int numColumns = matrix[0].length;
+
+            // holds number to be swapped
+            double hold;
+
+            for (int k = 0; k < numColumns; k++) {
+                hold = matrix[rowIndex2][k];
+                matrix[rowIndex2][k] = matrix[rowIndex1][k];
+                matrix[rowIndex1][k] = hold;
+            }
+
+            return matrix;
+        }
+
+        /**
+         * Adds 2 rows together row2 = row2 + row1
+         *
+         * @param matrix matrix before row additon
+         * @param rowIndex1 int index of row to be added
+         * @param rowIndex2 int index or row that row1 is added to
+         *
+         * @return matrix after row addition
+         */
+        private static double[][] rowAdd(double[][] matrix, int rowIndex1,
+                int rowIndex2) {
+            // number of columns in matrix
+            int numColumns = matrix[0].length;
+
+            for (int k = 0; k < numColumns; k++) {
+                matrix[rowIndex2][k] += matrix[rowIndex1][k];
+            }
+
+            return matrix;
+        }
+
+        /**
+         * Multiplies a row by a scalar
+         *
+         * @param matrix matrix before row additon
+         * @param rowIndex int index of row to be scaled
+         * @param scalar double to scale row by
+         *
+         * @return matrix after row scaling
+         */
+        private static double[][] rowScale(double[][] matrix, int rowIndex,
+                double scalar) {
+            // number of columns in matrix
+            int numColumns = matrix[0].length;
+
+            for (int k = 0; k < numColumns; k++) {
+                matrix[rowIndex][k] *= scalar;
+            }
+
+            return matrix;
+        }
+
+        /**
+         * Adds a row by the scalar of another row row2 = row2 + (row1 * scalar)
+         *
+         * @param matrix matrix before row additon
+         * @param rowIndex1 int index of row to be added
+         * @param rowIndex2 int index or row that row1 is added to
+         * @param scalar double to scale row by
+         *
+         * @return matrix after row addition
+         */
+        private static double[][] rowAddScale(double[][] matrix, int rowIndex1,
+                int rowIndex2, double scalar) {
+            // number of columns in matrix
+            int numColumns = matrix[0].length;
+
+            for (int k = 0; k < numColumns; k++) {
+                matrix[rowIndex2][k] += (matrix[rowIndex1][k] * scalar);
+            }
+
+            return matrix;
+        }
+
     }
 
 }
