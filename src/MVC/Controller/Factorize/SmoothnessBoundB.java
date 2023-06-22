@@ -22,6 +22,9 @@ import java.math.BigInteger;
  * Note: This implementation uses the natural logarithm (base e) and the square
  * root function from the Math class.
  *
+ * Formula extracted from:
+ * https://medium.com/nerd-for-tech/heres-how-quadratic-sieve-factorization-works-1c878bc94f81
+ *
  * @author Sergio
  */
 public class SmoothnessBoundB {

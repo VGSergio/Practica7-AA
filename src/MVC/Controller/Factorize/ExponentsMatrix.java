@@ -20,7 +20,9 @@ import java.math.BigInteger;
  *
  * Note: The exponents matrix can be further processed, such as taking the
  * modulo 2 of each element to convert the exponents to binary values (0 or 1).
- * *
+ *
+ * Based on:
+ * https://medium.com/nerd-for-tech/heres-how-quadratic-sieve-factorization-works-1c878bc94f81
  *
  * @author Sergio
  */
