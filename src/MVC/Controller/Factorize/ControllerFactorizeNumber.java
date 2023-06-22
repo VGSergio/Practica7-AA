@@ -7,9 +7,7 @@ import static MVC.Controller.Factorize.SmoothQn.*;
 import MVC.Controller.PrimeNumber.ControllerPrimeNumber;
 import Practica7.Practica7;
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 /**
  *
@@ -69,7 +67,7 @@ public class ControllerFactorizeNumber extends Thread {
     public void factorize(String number) {
         BigInteger n = new BigInteger(number);
         if (ControllerPrimeNumber.isPrime(n)) {
-            System.out.println(n + " is prime.");
+            PRACTICA_7.notify("Solution", "FactorizeNumber", n + " is prime.");
         } else {
             factorize(n);
         }
@@ -84,34 +82,36 @@ public class ControllerFactorizeNumber extends Thread {
 
         // 1
         int smoothnessBound = SmoothnessBoundB.getSmoothnessBound(n);
+        System.out.println("Smoothness bound B = " + smoothnessBound + "\n");
 
         // 2 & 3
-        BigInteger[] factorBase = sieveOfEratosthenesWithEulerCriterion(BigInteger.valueOf(smoothnessBound), n);
-
+        BigInteger[] factorBase = sieveOfEratosthenesWithEulerCriterion(BigInteger.valueOf(50), n); // TODO: Change 50 per smoothnessBound.
+        System.out.println("Factors base = " + Arrays.toString(factorBase) + "\n");
+        
         // 4
         BigInteger[] Qn = computeQn(n, factorBase);
+        System.out.println("Qn = " + Arrays.toString(Qn) + "\n");
 
         // 5
         BigInteger[] smoothQn = sieveQn(Qn, factorBase);
+        System.out.println("Qn = " + Arrays.toString(smoothQn) + "\n");
 
         // 6
         int[][] exponentsMatrix = createMatrix(smoothQn, factorBase);
+        System.out.println("Exponents matrix:");
+        for (int[] is : exponentsMatrix) {
+            System.out.println(Arrays.toString(is));
+        }
+        
         // TODO: Compute exponentsMatrix left null space and determine the set of relations that will combine to give an even parity.
-
-        // 7 
-        /**
-         * Combining relations in step 6 will produce a single relation of the
-         * form a² ≡ b²(mod N). From this we get the much sought-after factors
-         * of N by computing gcd(a — b, N) and gcd(a + b, N) using the Euclidean
-         * algorithm.
-         */
     }
 
     @Override
     public void run() {
         PRACTICA_7.getModel().getFactorizeNumberStatus().setSolving();
 
-        factorize("21");
+        factorize(PRACTICA_7.getModel().getFactorizeNumberValue());
+        PRACTICA_7.notify("Solution", "FactorizeNumber", "Not implemented");
 
         PRACTICA_7.getModel().getFactorizeNumberStatus().setSolved();
     }

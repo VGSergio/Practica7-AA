@@ -23,7 +23,7 @@ public class Qn {
     public static BigInteger[] computeQn(BigInteger n, BigInteger[] factorBase) {
         int sqrt = (int) Math.ceil(Math.sqrt(n.doubleValue()));
 
-        BigInteger[] Q = new BigInteger[factorBase.length + 8]; // TODO: cambiar "+ 8" por * 6
+        BigInteger[] Q = new BigInteger[factorBase.length + 8]; // TODO: change "+ 8" per * 6
 
         for (int i = 0; i < Q.length; i++) {
             BigInteger Qn = BigInteger.valueOf(sqrt + i).pow(2).subtract(n);
