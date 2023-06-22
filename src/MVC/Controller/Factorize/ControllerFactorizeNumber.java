@@ -1,8 +1,9 @@
 package MVC.Controller.Factorize;
 
+import static MVC.Controller.Factorize.ExponentsMatrix.createMatrix;
 import static MVC.Controller.Factorize.Qn.*;
 import static MVC.Controller.Factorize.SieveOfEratosthenes.*;
-import static MVC.Controller.Factorize.BSmoothValues.*;
+import static MVC.Controller.Factorize.SmoothQn.*;
 import MVC.Controller.PrimeNumber.ControllerPrimeNumber;
 import Practica7.Practica7;
 import java.math.BigInteger;
@@ -16,10 +17,10 @@ import java.util.List;
  */
 public class ControllerFactorizeNumber extends Thread {
 
-    private final Practica7 practica7;
+    private final Practica7 PRACTICA_7;
 
     public ControllerFactorizeNumber(Practica7 practica7) {
-        this.practica7 = practica7;
+        this.PRACTICA_7 = practica7;
     }
 
     public void factorize(String number) {
@@ -36,78 +37,296 @@ public class ControllerFactorizeNumber extends Thread {
         // 1
         int smoothnessBound = SmoothnessBoundB.getSmoothnessBound(n);
 
-        // 2 y 3
+        // 2 & 3
         BigInteger[] factorBase = sieveOfEratosthenesWithEulerCriterion(BigInteger.valueOf(50), n); // TODO: cambiar 50 por smoothnessBound
-        int[] primes = sieveOfEratosthenes(BigInteger.valueOf(50), n);
-        BigInteger[] primesEuler = eulerCriterion(n, primes);
-        BigInteger[] bigIntegerArray = new BigInteger[primes.length];
-        for (int i = 0; i < primes.length; i++) {
-            bigIntegerArray[i] = BigInteger.valueOf(primes[i]);
-        }
 
         // 4
         BigInteger[] Qn = computeQn(n, factorBase);
 
-        // 5 y 6
-        SmoothRelationObject smoothRelations = smoothRelations(Qn, bigIntegerArray);
-        BigInteger[] smoothRelationsQN = smoothRelations.getQn();
-        int[][] smoothRelationsFactorsMatrix = smoothRelations.getFactors();
+        // 5
+        BigInteger[] smoothQn = sieveQn(Qn, factorBase);
+
+        // 6
+        System.out.println("exponentsMatrix");
+        int[][] exponentsMatrix = createMatrix(smoothQn, factorBase);
+
+        System.out.println("nullSpace");
+        int[][] nullSpace = findRelations(factorBase, Qn, smoothQn);
+        for (int[] is : nullSpace) {
+            System.out.println(Arrays.toString(is));
+        }
+
+        // Step 7: Perform Gaussian elimination to reduce the null space matrix to row-echelon form
+        System.out.println("rowEchelonMatrix");
+        int[][] rowEchelonMatrix = gaussianElimination(nullSpace);
+        for (int[] is : rowEchelonMatrix) {
+            System.out.println(Arrays.toString(is));
+        }
+
+        // Step 8: Identify linearly independent rows (relations)
+        System.out.println("independentRelations");
+        List<int[]> independentRelations = identifyIndependentRelations(rowEchelonMatrix);
+        for (int[] is : independentRelations) {
+            System.out.println(Arrays.toString(is));
+        }
+
+        // Step 9: Compute the product of corresponding smooth Qn values for each independent relation
+        System.out.println("productQnList");
+        List<BigInteger> productQnList = computeProductQn(independentRelations, smoothQn);
+
+        // Step 10: Compute square roots and check for non-trivial square roots modulo N
+        System.out.println("factors");
+        List<BigInteger> factors = new ArrayList<>();
+        for (BigInteger productQn : productQnList) {
+            BigInteger sqrtN = productQn.sqrt();
+            if (sqrtN.multiply(sqrtN).mod(n).equals(productQn)) {
+                BigInteger factor = n.gcd(sqrtN.subtract(productQn));
+                if (!factor.equals(BigInteger.ONE) && !factor.equals(n)) {
+                    factors.add(factor);
+                }
+            }
+        }
+        System.out.println(factors);
+
     }
 
-    public static BigInteger[][] solve(int[][] matrix) {
+    private static int[][] findRelations(BigInteger[] factorBase, BigInteger[] Qn, BigInteger[] smoothQn) {
+        int numRelations = smoothQn.length;
+        int numPrimes = factorBase.length;
+
+        // Create a matrix to hold the exponents of the prime factors
+        int[][] matrix = new int[numRelations][numPrimes];
+
+        // Fill the matrix with the exponents of the prime factors
+        for (int i = 0; i < numRelations; i++) {
+            BigInteger qn = smoothQn[i];
+            for (int j = 0; j < numPrimes; j++) {
+                BigInteger p = factorBase[j];
+                while (qn.mod(p).equals(BigInteger.ZERO)) {
+                    matrix[i][j]++;
+                    qn = qn.divide(p);
+                }
+            }
+        }
+
+        // Use the block Lanczos or block Wiedemann algorithm to compute the null space
+        // Here, we'll just simulate the null space calculation
+        int[][] nullSpace = new int[numRelations][numPrimes];
+        boolean[] used = new boolean[numRelations];
+        int nullSpaceSize = 0;
+
+        for (int i = 0; i < numRelations; i++) {
+            if (!used[i]) {
+                for (int j = 0; j < numPrimes; j++) {
+                    int sum = 0;
+                    for (int k = i; k < numRelations; k++) {
+                        sum += matrix[k][j];
+                    }
+                    nullSpace[nullSpaceSize][j] = sum % 2;
+                }
+
+                // Mark the related rows as used
+                for (int k = i; k < numRelations; k++) {
+                    if (Arrays.equals(matrix[k], matrix[i])) {
+                        used[k] = true;
+                    }
+                }
+
+                nullSpaceSize++;
+            }
+        }
+
+        // Trim the nullSpace array to the actual size
+        int[][] trimmedNullSpace = new int[nullSpaceSize][numPrimes];
+        System.arraycopy(nullSpace, 0, trimmedNullSpace, 0, nullSpaceSize);
+
+        return trimmedNullSpace;
+    }
+
+    private static int[][] findNullSpace(int[][] matrix) {
         int numRows = matrix.length;
         int numCols = matrix[0].length;
 
-        // Convert the int matrix to BigInteger matrix
-        BigInteger[][] bigIntegerMatrix = new BigInteger[numRows][numCols];
+        // Augment the matrix with an identity matrix
+        int[][] augmentedMatrix = new int[numRows][numCols + numRows];
         for (int i = 0; i < numRows; i++) {
-            for (int j = 0; j < numCols; j++) {
-                bigIntegerMatrix[i][j] = BigInteger.valueOf(matrix[i][j]);
-            }
+            System.arraycopy(matrix[i], 0, augmentedMatrix[i], 0, numCols);
+            augmentedMatrix[i][numCols + i] = 1;
         }
 
-        for (int col = 0; col < numCols; col++) {
-            int maxRow = col;
-            for (int row = col + 1; row < numRows; row++) {
-                if (bigIntegerMatrix[row][col].abs().compareTo(bigIntegerMatrix[maxRow][col].abs()) > 0) {
-                    maxRow = row;
+        // Perform Gaussian elimination
+        for (int row = 0; row < numRows; row++) {
+            if (augmentedMatrix[row][row] == 0) {
+                int swapRow = findNonZeroRow(augmentedMatrix, row);
+                if (swapRow == -1) {
+                    continue;  // No pivot found, move to the next row
+                }
+                swapRows(augmentedMatrix, row, swapRow);
+            }
+
+            int pivot = augmentedMatrix[row][row];
+            for (int col = 0; col < numCols + numRows; col++) {
+                augmentedMatrix[row][col] = (augmentedMatrix[row][col] * modInverse(pivot)) % 2;
+            }
+
+            for (int otherRow = 0; otherRow < numRows; otherRow++) {
+                if (otherRow != row && augmentedMatrix[otherRow][row] != 0) {
+                    int multiplier = augmentedMatrix[otherRow][row];
+                    for (int col = 0; col < numCols + numRows; col++) {
+                        augmentedMatrix[otherRow][col] = (augmentedMatrix[otherRow][col] + multiplier * augmentedMatrix[row][col]) % 2;
+                    }
                 }
             }
-
-            BigInteger[] temp = bigIntegerMatrix[col];
-            bigIntegerMatrix[col] = bigIntegerMatrix[maxRow];
-            bigIntegerMatrix[maxRow] = temp;
-
-            for (int row = col + 1; row < numRows; row++) {
-                BigInteger ratio = bigIntegerMatrix[row][col].divide(bigIntegerMatrix[col][col]);
-                for (int i = col; i < numCols; i++) {
-                    bigIntegerMatrix[row][i] = bigIntegerMatrix[row][i].subtract(ratio.multiply(bigIntegerMatrix[col][i]));
-                }
-            }
         }
 
-        BigInteger[][] solution = new BigInteger[numCols - 1][1];
-        for (int row = numRows - 1; row >= 0; row--) {
-            BigInteger sum = BigInteger.ZERO;
-            for (int col = row + 1; col < numCols - 1; col++) {
-                sum = sum.add(bigIntegerMatrix[row][col].multiply(solution[col][0]));
+        // Extract the null space
+        int[][] nullSpace = new int[numCols][numRows - numCols];
+        int nullSpaceCol = 0;
+        for (int col = numCols; col < numCols + numRows; col++) {
+            for (int row = 0; row < numRows; row++) {
+                nullSpace[row][nullSpaceCol] = augmentedMatrix[row][col];
             }
-            BigInteger coefficient = bigIntegerMatrix[row][row];
-            BigInteger constantTerm = bigIntegerMatrix[row][numCols - 1];
-            solution[row][0] = constantTerm.subtract(sum).divide(coefficient);
+            nullSpaceCol++;
         }
 
-        return solution;
+        return nullSpace;
     }
 
-    public static int[][] transposeMatrix(int[][] matrix) {
-        int rows = matrix.length;
-        int columns = matrix[0].length;
+    private static int findNonZeroRow(int[][] matrix, int startRow) {
+        int numRows = matrix.length;
+        int numCols = matrix[0].length;
 
-        int[][] transposedMatrix = new int[columns][rows];
+        for (int row = startRow + 1; row < numRows; row++) {
+            if (matrix[row][startRow] != 0) {
+                return row;
+            }
+        }
+        return -1;
+    }
+
+    private static void swapRows(int[][] matrix, int row1, int row2) {
+        int[] temp = matrix[row1];
+        matrix[row1] = matrix[row2];
+        matrix[row2] = temp;
+    }
+
+    private static int modInverse(int num) {
+        if (num % 2 == 0) {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+
+    private static List<int[]> identifyIndependentRelations(int[][] matrix) {
+        int numRows = matrix.length;
+        int numCols = matrix[0].length;
+
+        List<int[]> independentRelations = new ArrayList<>();
+        boolean[] usedRows = new boolean[numRows];
+
+        for (int r = 0; r < numRows; r++) {
+            int leadingCol = -1;
+            for (int c = 0; c < numCols; c++) {
+                if (matrix[r][c] == 1) {
+                    leadingCol = c;
+                    break;
+                }
+            }
+
+            if (leadingCol != -1 && !usedRows[r]) {
+                independentRelations.add(matrix[r]);
+                usedRows[r] = true;
+
+                // Mark the rows with the same leading column as used
+                for (int i = r + 1; i < numRows; i++) {
+                    if (matrix[i][leadingCol] == 1) {
+                        usedRows[i] = true;
+                    }
+                }
+            }
+        }
+
+        return independentRelations;
+    }
+
+    private static int[][] gaussianElimination(int[][] matrix) {
+        int numRows = matrix.length;
+        int numCols = matrix[0].length;
+
+        int[][] rowEchelonMatrix = new int[numRows][numCols];
+        for (int i = 0; i < numRows; i++) {
+            rowEchelonMatrix[i] = Arrays.copyOf(matrix[i], numCols);
+        }
+
+        int lead = 0;
+        for (int r = 0; r < numRows; r++) {
+            if (numCols <= lead) {
+                break;
+            }
+
+            int pivotRow = r;
+            while (rowEchelonMatrix[pivotRow][lead] == 0) {
+                pivotRow++;
+                if (numRows == pivotRow) {
+                    pivotRow = r;
+                    lead++;
+                    if (numCols == lead) {
+                        return rowEchelonMatrix; // Matrix is in row-echelon form
+                    }
+                }
+            }
+
+            // Swap rows
+            int[] temp = rowEchelonMatrix[r];
+            rowEchelonMatrix[r] = rowEchelonMatrix[pivotRow];
+            rowEchelonMatrix[pivotRow] = temp;
+
+            int pivot = rowEchelonMatrix[r][lead];
+            if (pivot != 0) {
+                for (int j = 0; j < numCols; j++) {
+                    rowEchelonMatrix[r][j] /= pivot;
+                }
+            }
+
+            for (int i = 0; i < numRows; i++) {
+                if (i != r) {
+                    int factor = rowEchelonMatrix[i][lead];
+                    for (int j = 0; j < numCols; j++) {
+                        rowEchelonMatrix[i][j] -= factor * rowEchelonMatrix[r][j];
+                    }
+                }
+            }
+
+            lead++;
+        }
+
+        return rowEchelonMatrix;
+    }
+
+    // Helper function to convert int[][] to double[][]
+    private static double[][] convertToDoubleArray(int[][] matrix) {
+        int rows = matrix.length;
+        int cols = matrix[0].length;
+
+        double[][] doubleMatrix = new double[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                doubleMatrix[i][j] = matrix[i][j];
+            }
+        }
+
+        return doubleMatrix;
+    }
+
+    private static int[][] transpose(int[][] matrix) {
+        int rows = matrix.length;
+        int cols = matrix[0].length;
+
+        int[][] transposedMatrix = new int[cols][rows];
 
         for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < columns; j++) {
+            for (int j = 0; j < cols; j++) {
                 transposedMatrix[j][i] = matrix[i][j];
             }
         }
@@ -115,255 +334,30 @@ public class ControllerFactorizeNumber extends Thread {
         return transposedMatrix;
     }
 
-    public static int[][] computeNullSpace(int[][] matrix) {
-        int numRows = matrix.length;
-        int numCols = matrix[0].length;
+    public static List<BigInteger> computeProductQn(List<int[]> independentRelations, BigInteger[] smoothQn) {
+        List<BigInteger> productQnList = new ArrayList<>();
 
-        // Create a list to store the null space vectors
-        List<int[]> nullSpace = new ArrayList<>();
+        for (int[] relation : independentRelations) {
+            BigInteger productQn = BigInteger.ONE;
 
-        // Create a copy of the matrix
-        int[][] copyMatrix = new int[numRows][numCols];
-        for (int i = 0; i < numRows; i++) {
-            System.arraycopy(matrix[i], 0, copyMatrix[i], 0, numCols);
-        }
-
-        // Perform Gaussian elimination
-        int row = 0;
-        for (int col = 0; col < numCols; col++) {
-            if (row >= numRows) {
-                break;
-            }
-
-            // Find the next non-zero element in the column
-            int pivotRow = row;
-            while (pivotRow < numRows && copyMatrix[pivotRow][col] == 0) {
-                pivotRow++;
-            }
-
-            if (pivotRow == numRows) {
-                continue; // All elements below this row are already zero
-            }
-
-            // Swap rows if necessary
-            int[] tempRow = copyMatrix[row];
-            copyMatrix[row] = copyMatrix[pivotRow];
-            copyMatrix[pivotRow] = tempRow;
-
-            // Perform row operations to make all elements below the pivot zero
-            for (int i = row + 1; i < numRows; i++) {
-                int factor = copyMatrix[i][col] / copyMatrix[row][col];
-                for (int j = col; j < numCols; j++) {
-                    copyMatrix[i][j] -= factor * copyMatrix[row][j];
+            for (int i = 0; i < relation.length - 1; i++) {
+                if (relation[i] == 1) {
+                    productQn = productQn.multiply(smoothQn[i]);
                 }
             }
 
-            row++;
+            productQnList.add(productQn);
         }
 
-        // Find the non-zero rows (basis vectors) in the row-echelon form
-        for (int r = 0; r < numRows; r++) {
-            boolean isZeroRow = true;
-            for (int c = 0; c < numCols; c++) {
-                if (copyMatrix[r][c] != 0) {
-                    isZeroRow = false;
-                    break;
-                }
-            }
-            if (!isZeroRow) {
-                nullSpace.add(copyMatrix[r]);
-            }
-        }
-
-        // Convert the list to a 2D array and return
-        int[][] nullSpaceArray = new int[nullSpace.size()][numCols];
-        for (int i = 0; i < nullSpace.size(); i++) {
-            nullSpaceArray[i] = nullSpace.get(i);
-        }
-        return nullSpaceArray;
-    }
-
-    public static double[][] convertIntMatrixToDoubleMatrix(int[][] intMatrix) {
-        int rows = intMatrix.length;
-        int cols = intMatrix[0].length;
-
-        double[][] doubleMatrix = new double[rows][cols];
-
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                doubleMatrix[i][j] = (double) intMatrix[i][j]; // Type casting
-            }
-        }
-
-        return doubleMatrix;
+        return productQnList;
     }
 
     @Override
     public void run() {
-        practica7.getModel().getFactorizeNumberStatus().setSolving();
+        PRACTICA_7.getModel().getFactorizeNumberStatus().setSolving();
 
-        factorize("227179");
+        factorize("21");
 
-        practica7.getModel().getFactorizeNumberStatus().setSolved();
+        PRACTICA_7.getModel().getFactorizeNumberStatus().setSolved();
     }
-
-    /**
-     * RREF contains advanced matrix math operations Created by Edie Zhou on
-     * 1/17/2019.
-     */
-    public class RREF {
-
-        /**
-         * Puts a matrix into reduced row echelon form
-         *
-         * @param matrix input matrix
-         *
-         * @return 2D result matrix
-         */
-        public static int[][] rref(double[][] matrix) {
-            int lead = 0;
-            int i;
-
-            // number of rows and columns in matrix
-            int numRows = matrix.length;
-            int numColumns = matrix[0].length;
-
-            for (int k = 0; k < numRows; k++) {
-                if (numColumns <= lead) {
-                    break;
-                }
-                i = k;
-                while (matrix[i][lead] == 0) {
-                    i++;
-                    if (numRows == i) {
-                        i = k;
-                        lead++;
-                        if (numColumns == lead) {
-                            break;
-                        }
-                    }
-
-                }
-                matrix = rowSwap(matrix, i, k);
-                if (matrix[k][lead] != 0) {
-                    matrix = rowScale(matrix, k, (1 / matrix[k][lead]));
-                }
-                for (i = 0; i < numRows; i++) {
-                    if (i != k) {
-                        matrix = rowAddScale(matrix, k, i, ((-1) * matrix[i][lead]));
-                    }
-                }
-                lead++;
-            }
-
-            return convertDoubleMatrixToIntMatrix(matrix);
-        }
-
-        private static int[][] convertDoubleMatrixToIntMatrix(double[][] doubleMatrix) {
-            int numRows = doubleMatrix.length;
-            int numCols = doubleMatrix[0].length;
-
-            int[][] intMatrix = new int[numRows][numCols];
-
-            for (int i = 0; i < numRows; i++) {
-                for (int j = 0; j < numCols; j++) {
-                    intMatrix[i][j] = (int) Math.round(doubleMatrix[i][j]);
-                }
-            }
-
-            return intMatrix;
-        }
-
-        /**
-         * Swap positions of 2 rows
-         *
-         * @param matrix matrix before row additon
-         * @param rowIndex1 int index of row to swap
-         * @param rowIndex2 int index of row to swap
-         *
-         * @return matrix after row swap
-         */
-        private static double[][] rowSwap(double[][] matrix, int rowIndex1,
-                int rowIndex2) {
-            // number of columns in matrix
-            int numColumns = matrix[0].length;
-
-            // holds number to be swapped
-            double hold;
-
-            for (int k = 0; k < numColumns; k++) {
-                hold = matrix[rowIndex2][k];
-                matrix[rowIndex2][k] = matrix[rowIndex1][k];
-                matrix[rowIndex1][k] = hold;
-            }
-
-            return matrix;
-        }
-
-        /**
-         * Adds 2 rows together row2 = row2 + row1
-         *
-         * @param matrix matrix before row additon
-         * @param rowIndex1 int index of row to be added
-         * @param rowIndex2 int index or row that row1 is added to
-         *
-         * @return matrix after row addition
-         */
-        private static double[][] rowAdd(double[][] matrix, int rowIndex1,
-                int rowIndex2) {
-            // number of columns in matrix
-            int numColumns = matrix[0].length;
-
-            for (int k = 0; k < numColumns; k++) {
-                matrix[rowIndex2][k] += matrix[rowIndex1][k];
-            }
-
-            return matrix;
-        }
-
-        /**
-         * Multiplies a row by a scalar
-         *
-         * @param matrix matrix before row additon
-         * @param rowIndex int index of row to be scaled
-         * @param scalar double to scale row by
-         *
-         * @return matrix after row scaling
-         */
-        private static double[][] rowScale(double[][] matrix, int rowIndex,
-                double scalar) {
-            // number of columns in matrix
-            int numColumns = matrix[0].length;
-
-            for (int k = 0; k < numColumns; k++) {
-                matrix[rowIndex][k] *= scalar;
-            }
-
-            return matrix;
-        }
-
-        /**
-         * Adds a row by the scalar of another row row2 = row2 + (row1 * scalar)
-         *
-         * @param matrix matrix before row additon
-         * @param rowIndex1 int index of row to be added
-         * @param rowIndex2 int index or row that row1 is added to
-         * @param scalar double to scale row by
-         *
-         * @return matrix after row addition
-         */
-        private static double[][] rowAddScale(double[][] matrix, int rowIndex1,
-                int rowIndex2, double scalar) {
-            // number of columns in matrix
-            int numColumns = matrix[0].length;
-
-            for (int k = 0; k < numColumns; k++) {
-                matrix[rowIndex2][k] += (matrix[rowIndex1][k] * scalar);
-            }
-
-            return matrix;
-        }
-
-    }
-
 }

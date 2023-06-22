@@ -4,6 +4,11 @@ import Practica7.Practica7;
 import mesurament.Mesurament;
 
 /**
+ * Represents the controller for retrieving the computers performance. This
+ * class extends Thread to enable running the algorithm in a separate thread. It
+ * measures the computer performance and updates the simulation status
+ * accordingly.
+ *
  * @author Sergio
  */
 public class ControllerComputerPerformance extends Thread {
@@ -22,10 +27,10 @@ public class ControllerComputerPerformance extends Thread {
     @Override
     public void run() {
         PRACTICA_7.getModel().getPerformanceStatus().setSolving();
-        
+
         Mesurament.mesura();
 
         PRACTICA_7.getModel().getPerformanceStatus().setSolved();
     }
-    
+
 }

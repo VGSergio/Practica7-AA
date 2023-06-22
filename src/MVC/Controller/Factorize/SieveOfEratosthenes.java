@@ -5,6 +5,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * This class provides methods for finding prime numbers and applying the Euler
+ * criterion using the Sieve of Eratosthenes algorithm. Adapted from
+ * https://www.geeksforgeeks.org/sieve-of-eratosthenes/ and
+ * https://www.geeksforgeeks.org/eulers-criterion-check-if-square-root-under-modulo-p-exists/
+ * with BigInteger support.
  *
  * @author Sergio
  */
@@ -58,18 +63,24 @@ public class SieveOfEratosthenes {
      * quadratic non-residue, or 0 if 'n' is not coprime to 'p'.
      */
     private static int eulerCriterion(BigInteger n, int p) {
-        int power = (p - 1) >> 1;  // Integer division by 2
+        int power = (p - 1) >> 1; // Integer division by 2
         BigInteger result = n.modPow(BigInteger.valueOf(power), BigInteger.valueOf(p));
 
         if (result.equals(BigInteger.ONE)) {
-            return 1;  // a is a quadratic residue modulo p
+            return 1; // a is a quadratic residue modulo p
         } else if (result.equals(BigInteger.valueOf(p - 1))) {
             return -1; // a is a quadratic non-residue modulo p
         } else {
-            return 0;  // a is not coprime to p
+            return 0; // a is not coprime to p
         }
     }
 
+    /**
+     * Finds all prime numbers less than or equal to a given smoothnessBound.
+     *
+     * @param smoothnessBound The upper limit for prime number search.
+     * @return An array of prime numbers less than or equal to smoothnessBound.
+     */
     public static int[] sieveOfEratosthenes(BigInteger smoothnessBound, BigInteger n) {
         int maxLimit = smoothnessBound.intValue();
         boolean[] isComposite = new boolean[maxLimit + 1];

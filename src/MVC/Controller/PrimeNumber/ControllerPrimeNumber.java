@@ -5,10 +5,22 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 /**
- * This class represents a controller for checking prime numbers using the
- * Miller-Rabin primality test. The implementation is based on the algorithm
- * described in the following article:
+ * Represents a controller for checking prime numbers using the Miller-Rabin
+ * primality test. The implementation is based on the algorithm described in the
+ * following article:
  * https://www.geeksforgeeks.org/primality-test-set-3-miller-rabin/
+ *
+ * This class extends Thread to enable running the algorithm in a separate
+ * thread. It checks if a given number is prime and updates the simulation
+ * status accordingly. It also provides utility methods for performing the
+ * Miller-Rabin primality test.
+ *
+ * Note: The Miller-Rabin primality test provides a probabilistic result. It
+ * returns true if the number is probably prime and false if it is composite.
+ *
+ * Note: This implementation uses a default number of trials for the
+ * Miller-Rabin test. The accuracy level can be adjusted by modifying the
+ * DEFAULT_NUM_TRIALS constant.
  *
  * @author Sergio
  */
@@ -39,7 +51,7 @@ public class ControllerPrimeNumber extends Thread {
     public boolean isPrime(String number) {
         return isPrime(new BigInteger(number), DEFAULT_NUM_TRIALS);
     }
-    
+
     /**
      * Checks if the given number is prime.
      *
@@ -73,14 +85,14 @@ public class ControllerPrimeNumber extends Thread {
             return true;
         }
 
-        // Find r such that n = 2^d * r + 1 for some r >= 1
+        // Find d such that n-1 = 2^s * d for some d >= 1
         BigInteger d = n.subtract(ONE);
-
+        // while even
         while (!d.testBit(0)) {
             d = d.shiftRight(1); // d /= 2
         }
 
-        // Iterate given number of 'numTrials' times
+        // Iterate given number 'numTrials' times
         for (int i = 0; i < numTrials; i++) {
             if (!millerRabinTest(d, n)) {
                 return false;
@@ -107,7 +119,7 @@ public class ControllerPrimeNumber extends Thread {
         BigInteger a = TWO.add(random.mod(nMinusFour));
 
         // Compute a^d % n
-        BigInteger x = power(a, d, n);
+        BigInteger x = a.modPow(d, n);
 
         if (x.equals(ONE) || x.equals(n.subtract(ONE))) {
             return true;
@@ -118,7 +130,7 @@ public class ControllerPrimeNumber extends Thread {
         // (ii) (x^2) % n is not 1
         // (iii) (x^2) % n is not n-1
         while (!d.equals(n.subtract(ONE))) {
-            x = power(x, TWO, n);
+            x = x.modPow(TWO, n);
             d = d.shiftLeft(1); // d *= 2
 
             if (x.equals(ONE)) {
@@ -132,36 +144,6 @@ public class ControllerPrimeNumber extends Thread {
 
         // Return composite
         return false;
-    }
-
-    /**
-     * Utility function to perform modular exponentiation.
-     *
-     * @param x the base
-     * @param y the exponent
-     * @param p the modulus
-     * @return (x^y) % p
-     */
-    private static BigInteger power(BigInteger x, BigInteger y, BigInteger p) {
-
-        BigInteger res = ONE; // Initialize result
-
-        //Update x if x >= p
-        x = x.mod(p);
-
-        while (y.compareTo(BigInteger.ZERO) > 0) {
-
-            // If y is odd, multiply x with result
-            if (y.testBit(0)) {
-                res = res.multiply(x).mod(p);
-            }
-
-            // y must be even now
-            y = y.shiftRight(1); // y = y/2
-            x = x.multiply(x).mod(p);
-        }
-
-        return res;
     }
 
     @Override

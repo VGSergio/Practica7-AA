@@ -17,11 +17,11 @@ public class Practica7 {
 
     private final View VIEW;
     private final Model MODEL;
-    private Controller CONTROLLER;
+    private final Controller CONTROLLER;
 
     /**
      * The main method of the application. Initializes the time measurement and
-     * creates an instance of the "Practice7" class.
+     * creates an instance of the "Practica7" class.
      *
      * @param args The command line arguments.
      */
@@ -32,14 +32,11 @@ public class Practica7 {
 
     /**
      * Constructor of the "Practica7" class. Initialize the instances of the
-     * controller and model.
+     * controller, model and view.
      */
     public Practica7() {
         CONTROLLER = new Controller(this);
         MODEL = new Model(this);
-
-        Practica7.this.notify("GetAvailableLanguages");
-
         VIEW = new View(this);
     }
 
@@ -73,8 +70,8 @@ public class Practica7 {
      * Method that notifies that an event has occurred.
      *
      * @param event The event to notify.
-     * @param algorithm The value associated with the event.
-     * @param value
+     * @param algorithm The algorithm that recieves the notify.
+     * @param value The value associated with the event.
      */
     public void notify(String event, String algorithm, String value) {
         switch (event) {

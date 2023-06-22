@@ -29,19 +29,28 @@ public class Controller {
         this.PRACTICA_7 = practica7;
     }
 
-    public void isPrimeNumber(){
+    /**
+     * Initiates the prime number checker algorithm.
+     */
+    public void isPrimeNumber() {
         controllerPrimeNumber = new ControllerPrimeNumber(PRACTICA_7);
         controllerPrimeNumber.start();
     }
-    
-    public void factorize(){
+
+    /**
+     * Initiates the factorization algorithm.
+     */
+    public void factorize() {
         controllerFactorizeNumber = new ControllerFactorizeNumber(PRACTICA_7);
         controllerFactorizeNumber.start();
     }
-    
-    public void performance(){
-        controllerComputerPerformance = new  ControllerComputerPerformance(PRACTICA_7);
+
+    /**
+     * Initiates the thread for getting the computers performance.
+     */
+    public void performance() {
+        controllerComputerPerformance = new ControllerComputerPerformance(PRACTICA_7);
         controllerComputerPerformance.start();
     }
-    
+
 }

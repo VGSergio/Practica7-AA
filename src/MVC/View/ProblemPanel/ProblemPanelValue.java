@@ -14,20 +14,29 @@ import javax.swing.JTextField;
  */
 public class ProblemPanelValue extends JTextField implements KeyListener {
 
-    private final Practica7 practica7;
+    private final Practica7 PRACTICA_7;
     private final String id;
 
+    /**
+     * Constructor for the ProblemPanelValue class.
+     *
+     * @param practica7 The instance of the Practica7 class.
+     * @param id The identifier for the value component.
+     */
     public ProblemPanelValue(Practica7 practica7, String id) {
-        this.practica7 = practica7;
+        this.PRACTICA_7 = practica7;
         this.id = id;
 
         configure();
     }
 
-    private void configure(){
+    /**
+     * Configures the ProblemPanelValue component. Sets up the key listener.
+     */
+    private void configure() {
         addKeyListener(this);
     }
-    
+
     @Override
     public Dimension getPreferredSize() {
         return new Dimension(200, 30);
@@ -40,7 +49,7 @@ public class ProblemPanelValue extends JTextField implements KeyListener {
     @Override
     public void keyReleased(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_ENTER && !"".equals(getText().trim())) {
-            practica7.notify("Solve", id, getText());
+            PRACTICA_7.notify("Solve", id, getText());
         }
     }
 

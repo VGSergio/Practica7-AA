@@ -7,7 +7,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 
 /**
- * The view component of the Model-View-Controller architecture for Practica5.
+ * The view component of the Model-View-Controller architecture for Practica7.
  * This class represents the graphical user interface (GUI) of the application.
  *
  * A JFrame that lets the user choose a the problem to solve "Compare languages"
@@ -17,7 +17,7 @@ import javax.swing.JFrame;
  */
 public class View extends JFrame {
 
-    private final Practica7 PRACTICA7;
+    private final Practica7 PRACTICA_7;
 
     private final ProblemPanel primeNumberPanel;
     private final ProblemPanel factorizeNumberPanel;
@@ -30,7 +30,7 @@ public class View extends JFrame {
      * @param practica7 an instance of the Practica7 class
      */
     public View(Practica7 practica7) {
-        PRACTICA7 = practica7;
+        PRACTICA_7 = practica7;
 
         primeNumberPanel = new ProblemPanel(practica7, "Prime number:", "PrimeNumber");
         factorizeNumberPanel = new ProblemPanel(practica7, "Factorize number:", "FactorizeNumber");
@@ -67,12 +67,22 @@ public class View extends JFrame {
         setLocationRelativeTo(null);
         setVisible(true);
     }
-    
-    public ProblemPanel getPrimeNumberPanel(){
+
+    /**
+     * Method for getting the instance of the Prime Numbers Panel.
+     *
+     * @return
+     */
+    public ProblemPanel getPrimeNumberPanel() {
         return this.primeNumberPanel;
     }
-    
-    public ProblemPanel getFactorizeNumberPanel(){
+
+    /**
+     * Method for getting the instance of the Factorize Numbers Panel.
+     *
+     * @return
+     */
+    public ProblemPanel getFactorizeNumberPanel() {
         return this.factorizeNumberPanel;
     }
 }
